@@ -1,50 +1,83 @@
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
+import datetime
+import hashlib
 from pathlib import Path
 
-# ====================== Fast & Secure Login/Logout System ======================
-def auth_system():
+# ====================== 30-Day License System ======================
+def license_system():
     license_file = Path("license.key")
-    
-    # Your secret developer password (CHANGE THIS!)
-    DEV_PASSWORD = "24434"  # <--- CHANGE THIS LINE TO YOUR PASSWORD
+    DEV_PASSWORD = "24434"  # فقط تو این رمز رو می‌دونی — عوضش کن!
 
-    # Check if logged in
-    if "logged_in" in st.session_state and st.session_state.logged_in:
-        if st.sidebar.button("Logout", type="secondary"):
-            st.session_state.logged_in = False
-            if license_file.exists():
-                license_file.unlink()
-            st.success("Logged out successfully")
-            st.rerun()
-        st.sidebar.success("Logged in")
-        return True
+    # اگر لایسنس وجود داره و معتبره
+    if license_file.exists():
+        try:
+            expiry_str, saved_hash = license_file.read_text().strip().split("|")
+            expiry = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
+            expected_hash = hashlib.sha256(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()
+            
+            if saved_hash == expected_hash and datetime.date.today() <= expiry:
+                days_left = (expiry - datetime.date.today()).days
+                st.session_state.license_valid = True
+                st.session_state.days_left = days_left
+                return True
+        except:
+            pass
 
-    # Login Screen
+    # صفحه ورود
     st.markdown("<h1 style='text-align:center;color:#8B0000;font-size:60px;'>CB-SHIELD PRO</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center;color:#2c3e50;'>Advanced CBRN Dispersion Modeling System</h3>", unsafe_allow_html=True)
     st.markdown("---")
-    st.error("Authentication Required")
+    st.error("License Required")
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        password = st.text_input("Enter Developer Password", type="password")
-        
-        if st.button("Login & Activate", type="primary", use_container_width=True):
-            if password == DEV_PASSWORD:
-                license_file.write_text("ACTIVE")
-                st.session_state.logged_in = True
-                st.success("Login Successful! Welcome to CB-Shield Pro")
-                st.rerun()
+        code = st.text_input("Enter License Code", type="password")
+        if st.button("Activate & Enter", type="primary", use_container_width=True):
+            if "|" in code and len(code.split("|")) == 2:
+                expiry_str, code_hash = code.split("|")
+                try:
+                    expiry = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
+                    expected_hash = hashlib.sha256(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()
+                    if code_hash == expected_hash and datetime.date.today() <= expiry:
+                        license_file.write_text(code)
+                        st.success(f"Access Granted! { (expiry - datetime.date.today()).days } days remaining")
+                        st.session_state.license_valid = True
+                        st.rerun()
+                    else:
+                        st.error("Invalid or expired license")
+                except:
+                    st.error("Invalid format")
             else:
-                st.error("Incorrect password")
+                st.error("Invalid license code")
+
+        with st.expander("Developer: Generate 30-Day License"):
+            pwd = st.text_input("Developer Password", type="password")
+            if st.button("Generate License"):
+                if pwd == DEV_PASSWORD:
+                    expiry = (datetime.date.today() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")
+                    code_hash = hashlib.sha256(f"{expiry}{DEV_PASSWORD}".encode()).hexdigest()
+                    license_code = f"{expiry}|{code_hash}"
+                    st.code(license_code)
+                    st.success("30-day license generated! Share only with authorized users.")
+                else:
+                    st.error("Wrong password")
 
     st.stop()
 
-auth_system()
+license_system()
 
-# ====================== 65 CBRN Agents (Exact from your code) ======================
+# Logout
+if st.sidebar.button("Logout", type="secondary"):
+    if Path("license.key").exists():
+        Path("license.key").unlink()
+    st.session_state.clear()
+    st.rerun()
+
+st.sidebar.success(f"License Active — {st.session_state.days_left} days left")
+
+# ====================== 65 CBRN Agents ======================
 chemicals_db = {
     "Sarin (GB)":                    {"Mw": 140.1, "LCt50": 75,    "Incap": 25},
     "Tabun (GA)":                    {"Mw": 162.3, "LCt50": 400,   "Incap": 150},
@@ -70,21 +103,21 @@ chemicals_db = {
     "Methyldichloroarsine (MD)":     {"Mw": 160.9, "LCt50": 3000,  "Incap": 500},
     "Phosgene Oxime (CX)":           {"Mw": 113.5, "LCt50": 3200,  "Incap": 1600},
     "Hydrogen Cyanide (AC)":         {"Mw": 27.0,  "LCt50": 2500, "Incap": 1000},
-    "Cyanogen Chloride (CK)":        {"Mw": 61.5,  "LCt50": 11000, "Incap": 2500},
+    "Cyanogen Chloride (CK)":        {"Mw": 61.5,  "LCt50": 11000,"Incap": 2500},
     "Arsine (SA)":                   {"Mw": 77.9,  "LCt50": 5000, "Incap": 500},
     "Phosgene (CG)":                 {"Mw": 98.9,  "LCt50": 3200, "Incap": 1600},
     "Diphosgene (DP)":               {"Mw": 197.8, "LCt50": 3200, "Incap": 800},
-    "Chlorine (Cl2)":                {"Mw": 70.9,  "LCt50": 19000, "Incap": 3000},
+    "Chlorine (Cl2)":                {"Mw": 70.9,  "LCt50": 19000,"Incap": 3000},
     "Chloropicrin (PS)":             {"Mw": 164.4, "LCt50": 2000, "Incap": 400},
     "Perfluoroisobutylene (PFIB)":   {"Mw": 200.0, "LCt50": 300,  "Incap": 50},
-    "BZ Agent":                      {"Mw": 337.4, "LCt50": 110000, "Incap": 20000},
-    "Agent 15":                      {"Mw": 340.0, "LCt50": 100000, "Incap": 18000},
-    "EA-3167":                       {"Mw": 350.0, "LCt50": 150000, "Incap": 25000},
+    "BZ Agent":                      {"Mw": 337.4, "LCt50": 110000,"Incap": 20000},
+    "Agent 15":                      {"Mw": 340.0, "LCt50": 100000,"Incap": 18000},
+    "EA-3167":                       {"Mw": 350.0, "LCt50": 150000,"Incap": 25000},
     "CS Gas":                        {"Mw": 188.5, "LCt50": 60000, "Incap": 5},
     "CR Gas":                        {"Mw": 195.0, "LCt50": 60000, "Incap": 3},
     "CN Gas":                        {"Mw": 154.6, "LCt50": 8500,  "Incap": 20},
-    "OC (Pepper Spray)":             {"Mw": 305.4, "LCt50": 100000, "Incap": 1},
-    "PAVA":                          {"Mw": 293.4, "LCt50": 120000, "Incap": 2},
+    "OC (Pepper Spray)":             {"Mw": 305.4, "LCt50": 100000,"Incap": 1},
+    "PAVA":                          {"Mw": 293.4, "LCt50": 120000,"Incap": 2},
     "Adamsite (DM)":                 {"Mw": 277.6, "LCt50": 11000, "Incap": 150},
     "Ammonia":                       {"Mw": 17.0,  "LCt50": 5000, "Incap": 1500},
     "Methyl Isocyanate":             {"Mw": 57.1,  "LCt50": 300,  "Incap": 50},
@@ -93,11 +126,11 @@ chemicals_db = {
     "Hydrazine":                     {"Mw": 32.0,  "LCt50": 570,  "Incap": 100},
     "Bromine":                       {"Mw": 159.8, "LCt50": 1500, "Incap": 300},
     "Ricin":                         {"Mw": 64000, "LCt50": 3,     "Incap": 0.5},
-    "Botulinum Toxin":               {"Mw": 150000, "LCt50": 0.001, "Incap": 0.0001},
+    "Botulinum Toxin":               {"Mw": 150000,"LCt50": 0.001,"Incap": 0.0001},
     "Staph Enterotoxin B (SEB)":     {"Mw": 28354, "LCt50": 0.02, "Incap": 0.0003},
     "T-2 Mycotoxin":                 {"Mw": 466.0, "LCt50": 200,  "Incap": 50},
     "Saxitoxin":                     {"Mw": 299.3, "LCt50": 0.01, "Incap": 0.002},
-    "Tetrodotoxin":                  {"Mw": 319.3, "LCt50": 0.008, "Incap": 0.001},
+    "Tetrodotoxin":                  {"Mw": 319.3, "LCt50": 0.008,"Incap": 0.001},
     "Anthrax Spores":                {"Mw": 0,     "LCt50": 8000, "Incap": 2000},
     "Plague (Y. pestis)":            {"Mw": 0,     "LCt50": 100,  "Incap": 10},
     "Tularemia":                     {"Mw": 0,     "LCt50": 10,   "Incap": 1},
@@ -148,35 +181,29 @@ data = st.session_state.data
 
 # Tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "1. Agent Selection", "2. Atmospheric Stability", "3. Release Parameters", "4. Dispersion Map", "5. Dose Profile"
+    "1. Agent", "2. Stability", "3. Release", "4. Map", "5. Profile"
 ])
 
 with tab1:
     st.header("Agent Selection")
-    chem = st.selectbox("Select Agent", options=list(chemicals_db.keys()))
+    chem = st.selectbox("Agent", options=list(chemicals_db.keys()))
     agent = chemicals_db[chem]
     data["chem"] = chem
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info(f"**Agent:** {chem}\n**Molecular Weight:** {agent['Mw']:.1f} g/mol")
-    with col2:
-        st.error(f"**LCt50:** {agent['LCt50']} mg·min/m³")
-        st.warning(f"**Incapacitating Dose:** {agent['Incap']} mg·min/m³")
+    st.info(f"**{chem}** | MW: {agent['Mw']:.1f} g/mol")
+    st.error(f"LCt50: {agent['LCt50']} mg·min/m³")
+    st.warning(f"Incapacitating: {agent['Incap']} mg·min/m³")
 
 with tab2:
-    st.header("Atmospheric Stability (Pasquill-Gifford)")
-    col1, col2 = st.columns(2)
-    with col1:
-        time = st.radio("Time", ["Day", "Night"], horizontal=True)
-        wind_speed = st.slider("Wind Speed (m/s)", 0.5, 15.0, data["wind_speed"], 0.1)
-        data["wind_speed"] = wind_speed
-    with col2:
-        if time == "Day":
-            solar = st.radio("Solar Radiation", ["Strong", "Moderate", "Slight"], horizontal=True)
-        else:
-            cloud = st.radio("Cloud Cover", ["≤ 3/8", "> 4/8"], horizontal=True)
-    if st.button("Calculate Stability Class", type="primary"):
-        u = wind_speed
+    st.header("Atmospheric Stability")
+    time = st.radio("Time", ["Day", "Night"], horizontal=True)
+    wind = st.slider("Wind Speed (m/s)", 0.5, 15.0, data["wind_speed"], 0.1)
+    data["wind_speed"] = wind
+    if time == "Day":
+        solar = st.radio("Solar Radiation", ["Strong", "Moderate", "Slight"])
+    else:
+        cloud = st.radio("Cloud Cover", ["≤ 3/8", "> 4/8"])
+    if st.button("Calculate Class"):
+        u = wind
         if u < 2: cat = "A"
         elif u < 3: cat = "B"
         elif u < 5: cat = "C"
@@ -192,31 +219,31 @@ with tab2:
         else:
             stab = "F" if cloud == "≤ 3/8" else "E"
         data["stability"] = stab[0] if '-' in stab else stab
-        st.success(f"Stability Class: **{data['stability']}**")
+        st.success(f"Class: **{data['stability']}**")
 
 with tab3:
     st.header("Release Parameters")
-    release_type = st.radio("Release Type", ["Instantaneous (Puff)", "Continuous (Plume)"])
-    data["release_type"] = "Instantaneous" if "Instantaneous" in release_type else "Continuous"
-    Q = st.number_input("Release Amount (kg)", 1, 10000, int(data["Q"]))
+    rtype = st.radio("Type", ["Instantaneous", "Continuous"])
+    data["release_type"] = rtype
+    Q = st.number_input("Amount (kg)", 1, 10000, int(data["Q"]))
     data["Q"] = Q
-    if data["release_type"] == "Continuous":
-        duration = st.number_input("Duration (minutes)", 0.1, 300.0, data["duration_min"] if data["duration_min"] > 0 else 10.0)
-        data["duration_min"] = duration
-    H = st.number_input("Source Height (m)", 0.0, 200.0, data["H"])
+    if rtype == "Continuous":
+        dur = st.number_input("Duration (min)", 0.1, 300.0, data["duration_min"])
+        data["duration_min"] = dur
+    H = st.number_input("Height (m)", 0.0, 200.0, data["H"])
     data["H"] = H
-    col1, col2, col3 = st.columns(3)
-    data["x_rec"] = col1.number_input("Receptor X (m)", value=data["x_rec"])
-    data["y_rec"] = col2.number_input("Receptor Y (m)", value=data["y_rec"])
-    data["z_rec"] = col3.number_input("Receptor Z (m)", value=data["z_rec"])
+    c1, c2, c3 = st.columns(3)
+    data["x_rec"] = c1.number_input("X (m)", value=data["x_rec"])
+    data["y_rec"] = c2.number_input("Y (m)", value=data["y_rec"])
+    data["z_rec"] = c3.number_input("Z (m)", value=data["z_rec"])
 
 with tab4:
     st.header("Dispersion Map")
-    if st.button("Generate Map", type="primary", use_container_width=True):
+    if st.button("Generate Map", type="primary"):
         if not data.get("stability"):
-            st.error("Calculate stability class first")
+            st.error("Calculate stability first")
         else:
-            with st.spinner("Calculating (fast mode)..."):
+            with st.spinner("Calculating..."):
                 x = np.linspace(100, 25000, 400)
                 y = np.linspace(-10000, 10000, 400)
                 X, Y = np.meshgrid(x, y)
@@ -245,15 +272,14 @@ with tab4:
                 fig.add_trace(go.Contour(x=x/1000, y=y/1000, z=dose, colorscale='Greens', opacity=0.3,
                                        contours=dict(start=0.1, end=agent['Incap'])))
                 fig.add_scatter(x=[0], y=[0], mode="markers", marker=dict(size=16, color="black", symbol="x"))
-                fig.update_layout(title=f"{chem} | Class {stab} | Wind {u:.1f} m/s | Q={Q} kg",
-                               xaxis_title="Downwind (km)", yaxis_title="Crosswind (km)")
+                fig.update_layout(title=f"{chem} | Class {stab} | Wind {u:.1f} m/s")
                 st.plotly_chart(fig, use_container_width=True)
 
 with tab5:
     st.header("Dose Profile")
-    if st.button("Generate Profile", type="primary"):
+    if st.button("Plot Profile"):
         if not data.get("stability"):
-            st.error("Stability class required")
+            st.error("Stability required")
         else:
             x = np.linspace(50, 20000, 600)
             dose = np.zeros_like(x)
