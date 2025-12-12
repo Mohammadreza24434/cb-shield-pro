@@ -5,17 +5,17 @@ import datetime
 import hashlib
 from pathlib import Path
 
-# ====================== Fast & Secure 30-Day License ======================
+# ====================== 30-Day License System (Short & Secure) ======================
 def license_system():
     license_file = Path("license.key")
-    DEV_PASSWORD = "24434"  # فقط تو این رمز رو عوض کن!
+    DEV_PASSWORD = "24434"  # رمز تو — فقط تو می‌دونی!
 
     if license_file.exists():
         try:
-            expiry_str, code_hash = license_file.read_text().strip().split("|")
+            expiry_str, saved_hash = license_file.read_text().strip().split("|")
             expiry = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
             expected = hashlib.md5(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()[:8]
-            if code_hash == expected and datetime.date.today() <= expiry:
+            if saved_hash == expected and datetime.date.today() <= expiry:
                 st.session_state.logged_in = True
                 st.session_state.days_left = (expiry - datetime.date.today()).days
                 return True
@@ -30,6 +30,8 @@ def license_system():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         code = st.text_input("Enter License Code", type="password", placeholder="2025-12-15|abc123")
+        if st.caption("Format: YYYY-MM-DD|xxxxxx")
+
         if st.button("Activate", type="primary", use_container_width=True):
             if "|" in code and len(code.split("|")) == 2:
                 expiry_str, code_hash = code.split("|")
@@ -38,7 +40,7 @@ def license_system():
                     expected = hashlib.md5(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()[:8]
                     if code_hash == expected and datetime.date.today() <= expiry:
                         license_file.write_text(code)
-                        st.success(f"Access Granted! {st.session_state.days_left} days left")
+                        st.success(f"Activated! { (expiry - datetime.date.today()).days } days left")
                         st.session_state.logged_in = True
                         st.rerun()
                     else:
@@ -46,17 +48,17 @@ def license_system():
                 except:
                     st.error("Wrong format")
             else:
-                st.error("Use format: YYYY-MM-DD|xxxxxx")
+                st.error("Use: YYYY-MM-DD|xxxxxx")
 
-        with st.expander("Developer: Generate 30-Day License"):
+        with st.expander("Developer: Generate License"):
             pwd = st.text_input("Password", type="password")
-            if st.button("Generate"):
+            if st.button("Generate 30-Day License"):
                 if pwd == DEV_PASSWORD:
                     expiry = (datetime.date.today() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")
                     short_hash = hashlib.md5(f"{expiry}{DEV_PASSWORD}".encode()).hexdigest()[:8]
                     license_code = f"{expiry}|{short_hash}"
                     st.code(license_code)
-                    st.success("30-day license ready!")
+                    st.success("License ready!")
                 else:
                     st.error("Wrong password")
 
@@ -71,7 +73,7 @@ if st.sidebar.button("Logout", type="secondary"):
     st.session_state.clear()
     st.rerun()
 
-st.sidebar.success(f"Active — {st.session_state.days_left} days")
+st.sidebar.success(f"Active — {st.session_state.days_left} days left")
 
 # ====================== 65 CBRN Agents ======================
 chemicals_db = {
@@ -99,21 +101,21 @@ chemicals_db = {
     "Methyldichloroarsine (MD)":     {"Mw": 160.9, "LCt50": 3000,  "Incap": 500},
     "Phosgene Oxime (CX)":           {"Mw": 113.5, "LCt50": 3200,  "Incap": 1600},
     "Hydrogen Cyanide (AC)":         {"Mw": 27.0,  "LCt50": 2500, "Incap": 1000},
-    "Cyanogen Chloride (CK)":        {"Mw": 61.5,  "LCt50": 11000,"Incap": 2500},
+    "Cyanogen Chloride (CK)":        {"Mw": 61.5,  "LCt50": 11000, "Incap": 2500},
     "Arsine (SA)":                   {"Mw": 77.9,  "LCt50": 5000, "Incap": 500},
     "Phosgene (CG)":                 {"Mw": 98.9,  "LCt50": 3200, "Incap": 1600},
     "Diphosgene (DP)":               {"Mw": 197.8, "LCt50": 3200, "Incap": 800},
-    "Chlorine (Cl2)":                {"Mw": 70.9,  "LCt50": 19000,"Incap": 3000},
+    "Chlorine (Cl2)":                {"Mw": 70.9,  "LCt50": 19000, "Incap": 3000},
     "Chloropicrin (PS)":             {"Mw": 164.4, "LCt50": 2000, "Incap": 400},
     "Perfluoroisobutylene (PFIB)":   {"Mw": 200.0, "LCt50": 300,  "Incap": 50},
-    "BZ Agent":                      {"Mw": 337.4, "LCt50": 110000,"Incap": 20000},
-    "Agent 15":                      {"Mw": 340.0, "LCt50": 100000,"Incap": 18000},
-    "EA-3167":                       {"Mw": 350.0, "LCt50": 150000,"Incap": 25000},
+    "BZ Agent":                      {"Mw": 337.4, "LCt50": 110000, "Incap": 20000},
+    "Agent 15":                      {"Mw": 340.0, "LCt50": 100000, "Incap": 18000},
+    "EA-3167":                       {"Mw": 350.0, "LCt50": 150000, "Incap": 25000},
     "CS Gas":                        {"Mw": 188.5, "LCt50": 60000, "Incap": 5},
     "CR Gas":                        {"Mw": 195.0, "LCt50": 60000, "Incap": 3},
     "CN Gas":                        {"Mw": 154.6, "LCt50": 8500,  "Incap": 20},
-    "OC (Pepper Spray)":             {"Mw": 305.4, "LCt50": 100000,"Incap": 1},
-    "PAVA":                          {"Mw": 293.4, "LCt50": 120000,"Incap": 2},
+    "OC (Pepper Spray)":             {"Mw": 305.4, "LCt50": 100000, "Incap": 1},
+    "PAVA":                          {"Mw": 293.4, "LCt50": 120000, "Incap": 2},
     "Adamsite (DM)":                 {"Mw": 277.6, "LCt50": 11000, "Incap": 150},
     "Ammonia":                       {"Mw": 17.0,  "LCt50": 5000, "Incap": 1500},
     "Methyl Isocyanate":             {"Mw": 57.1,  "LCt50": 300,  "Incap": 50},
@@ -142,7 +144,7 @@ chemicals_db = {
     "Nipah Virus":                   {"Mw": 0,     "LCt50": 2,    "Incap": 0.2},
 }
 
-# Ultra-fast sigma (cached)
+# Fast & Accurate Sigma Functions
 @st.cache_data
 def get_sigma_y(stability, x):
     x = np.maximum(x, 1.0)
@@ -175,25 +177,29 @@ with tab1:
     chem = st.selectbox("Agent", list(chemicals_db.keys()))
     agent = chemicals_db[chem]
     data["chem"] = chem
-    st.info(f"**{chem}** | MW: {agent['Mw']:.1f}")
-    st.error(f"LCt50: {agent['LCt50']}")
-    st.warning(f"Incap: {agent['Incap']}")
+    st.info(f"**{chem}** | MW: {agent['Mw']:.1f} g/mol")
+    st.error(f"LCt50: {agent['LCt50']} mg·min/m³")
+    st.warning(f"Incapacitating: {agent['Incap']} mg·min/m³")
 
 with tab2:
-    st.header("Stability Class")
+    st.header("Atmospheric Stability")
     time = st.radio("Time", ["Day","Night"], horizontal=True)
-    wind = st.slider("Wind (m/s)",0.5,15.0,data["wind_speed"],0.1)
+    wind = st.slider("Wind Speed (m/s)",0.5,15.0,data["wind_speed"],0.1)
     data["wind_speed"] = wind
-    if time=="Day": solar = st.radio("Solar",["Strong","Moderate","Slight"])
-    else: cloud = st.radio("Cloud",["≤3/8",">4/8"])
+    if time=="Day": solar = st.radio("Solar Radiation",["Strong","Moderate","Slight"])
+    else: cloud = st.radio("Cloud Cover",["≤3/8",">4/8"])
     if st.button("Calculate"):
         u = wind
         cat = "A" if u<2 else "B" if u<3 else "C" if u<5 else "D" if u<6 else "E"
-        stab = {"A":{"Strong":"A","Moderate":"A-B","Slight":"B"},
-                "B":{"Strong":"A-B","Moderate":"B","Slight":"C"},
-                "C":{"Strong":"B","Moderate":"C","Slight":"C"},
-                "D":{"Strong":"C","Moderate":"C-D","Slight":"D"},
-                "E":{"Strong":"C","Moderate":"D","Slight":"D"}}[cat][solar] if time=="Day" else ("F" if cloud=="≤3/8" else "E")
+        if time=="Day":
+            table = {"A":{"Strong":"A","Moderate":"A-B","Slight":"B"},
+                     "B":{"Strong":"A-B","Moderate":"B","Slight":"C"},
+                     "C":{"Strong":"B","Moderate":"C","Slight":"C"},
+                     "D":{"Strong":"C","Moderate":"C-D","Slight":"D"},
+                     "E":{"Strong":"C","Moderate":"D","Slight":"D"}}
+            stab = table[cat][solar]
+        else:
+            stab = "F" if cloud=="≤3/8" else "E"
         data["stability"] = stab[0] if '-' in stab else stab
         st.success(f"Class: **{data['stability']}**")
 
@@ -209,17 +215,17 @@ with tab3:
     H = st.number_input("Height (m)",0.0,200.0,data["H"])
     data["H"] = H
     c1,c2,c3 = st.columns(3)
-    data["x_rec"] = c1.number_input("X",value=data["x_rec"])
-    data["y_rec"] = c2.number_input("Y",value=data["y_rec"])
-    data["z_rec"] = c3.number_input("Z",value=data["z_rec"])
+    data["x_rec"] = c1.number_input("X (m)",value=data["x_rec"])
+    data["y_rec"] = c2.number_input("Y (m)",value=data["y_rec"])
+    data["z_rec"] = c3.number_input("Z (m)",value=data["z_rec"])
 
 with tab4:
     st.header("Dispersion Map")
-    if st.button("Plot", type="primary"):
+    if st.button("Generate Map", type="primary"):
         if not data.get("stability"):
             st.error("Calculate stability first")
         else:
-            with st.spinner("Fast calculation..."):
+            with st.spinner("Calculating..."):
                 x = np.linspace(100,25000,350)
                 y = np.linspace(-10000,10000,350)
                 X,Y = np.meshgrid(x,y)
@@ -253,7 +259,7 @@ with tab4:
 
 with tab5:
     st.header("Dose Profile")
-    if st.button("Plot"):
+    if st.button("Plot Profile"):
         if not data.get("stability"):
             st.error("Stability required")
         else:
@@ -274,7 +280,7 @@ with tab5:
             fig = go.Figure(go.Scatter(x=x,y=dose,mode='lines',line=dict(width=3,color='#2980b9')))
             fig.add_hline(y=agent["LCt50"],line_dash="dash",line_color="red")
             fig.add_hline(y=agent["Incap"],line_dash="dot",line_color="orange")
-            fig.update_layout(title="Centerline Dose",xaxis_title="Distance (m)",yaxis_title="Dose (mg·min/m³)")
+            fig.update_layout(title="Centerline Dose Profile",xaxis_title="Distance (m)",yaxis_title="Dose (mg·min/m³)")
             st.plotly_chart(fig,use_container_width=True)
 
 st.markdown("**CB-Shield Pro © 2025 — Made in Iran**")
