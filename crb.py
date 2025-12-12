@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
@@ -10,12 +9,13 @@ from pathlib import Path
 def license_system():
     license_file = Path("license.key")
     SECRET_SALT = "CBRN-IRAN-DEFENSE-2025-TOPSECRET"
+    DEV_PASSWORD = "24434"  # CHANGE THIS TO YOUR OWN PASSWORD
 
-    # Check if valid license exists
+    # Check existing license
     if license_file.exists():
         try:
-            saved_code, saved_hash = license_file.read_text().strip().split("|")
-            if hashlib.sha256(f"{saved_code}{SECRET_SALT}".encode()).hexdigest() == saved_hash:
+            code, saved_hash = license_file.read_text().strip().split("|")
+            if hashlib.sha256(f"{code}{SECRET_SALT}".encode()).hexdigest() == saved_hash:
                 st.session_state.license_valid = True
                 return True
         except:
@@ -25,36 +25,32 @@ def license_system():
     st.markdown("<h1 style='text-align:center;color:#8B0000;font-size:60px;'>CB-SHIELD PRO</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center;color:#2c3e50;'>Advanced CBRN Dispersion Modeling System</h3>", unsafe_allow_html=True)
     st.markdown("---")
-    st.error("License Required to Access Software")
+    st.error("License Required")
 
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        license_code = st.text_input("Enter License Code", type="password", placeholder="XXXX-XXXX-XXXX-XXXX")
-        if st.button("Activate & Enter", type="primary", use_container_width=True):
-            if len(license_code) >= 10:
-                test_hash = hashlib.sha256(f"{license_code}{SECRET_SALT}".encode()).hexdigest()
-                license_file.write_text(f"{license_code}|{test_hash}")
-                st.success("License Activated! Welcome.")
-                st.session_state.license_valid = True
-                st.rerun()
-            else:
-                st.error("Invalid license code")
+        license_code = st.text_input("Enter License Code", type="password")
+        if st.button("Activate License", type="primary", use_container_width=True):
+            test_hash = hashlib.sha256(f"{license_code}{SECRET_SALT}".encode()).hexdigest()
+            license_file.write_text(f"{license_code}|{test_hash}")
+            st.success("License Activated! Welcome.")
+            st.session_state.license_valid = True
+            st.rerun()
 
-        with st.expander("Developer: Generate License"):
-            dev_pwd = st.text_input("Password", type="password")
-            if st.button("Generate New Code"):
-                if dev_pwd == "YourSecretDevPass2025":  # CHANGE THIS TO YOUR PASSWORD
-                    new_code = f"CBRN-{datetime.date.today().strftime('%Y%m%d')}-{hashlib.md5(str(datetime.now()).encode()).hexdigest()[:8].upper()}"
+        with st.expander("Developer: Generate New License"):
+            pwd = st.text_input("Developer Password", type="password")
+            if st.button("Generate License"):
+                if pwd == DEV_PASSWORD:
+                    new_code = f"CBRN-{datetime.date.today():%Y%m%d}-IR"
                     st.code(new_code)
-                    st.success("New license code generated! Use it above.")
+                    st.success("Use this code above")
                 else:
                     st.error("Wrong password")
-
     st.stop()
 
 license_system()
 
-# ====================== Full 65 CBRN Agents Database ======================
+# ====================== 65 CBRN Agents Database ======================
 chemicals_db = {
     "Sarin (GB)":                    {"Mw": 140.1, "LCt50": 75,    "Incap": 25},
     "Tabun (GA)":                    {"Mw": 162.3, "LCt50": 400,   "Incap": 150},
@@ -66,7 +62,7 @@ chemicals_db = {
     "VG (Amiton)":                   {"Mw": 269.3, "LCt50": 30,    "Incap": 12},
     "VM":                            {"Mw": 225.3, "LCt50": 40,    "Incap": 15},
     "GV":                            {"Mw": 225.2, "LCt50": 30,    "Incap": 12},
-    "Novichok A-230":                {"Mw": 294.0, "LCt50": 7,     "Incap": 1.5},
+    "Novichok A-230":               {"Mw": 294.0, "LCt50": 7,     "Incap": 1.5},
     "Novichok A-232":                {"Mw": 298.0, "LCt50": 7,     "Incap": 2},
     "Novichok A-234":                {"Mw": 300.0, "LCt50": 5,     "Incap": 1},
     "EA-3148":                       {"Mw": 295.0, "LCt50": 8,     "Incap": 2},
@@ -87,7 +83,7 @@ chemicals_db = {
     "Chlorine (Cl2)":                {"Mw": 70.9,  "LCt50": 19000,"Incap": 3000},
     "Chloropicrin (PS)":             {"Mw": 164.4, "LCt50": 2000, "Incap": 400},
     "Perfluoroisobutylene (PFIB)":   {"Mw": 200.0, "LCt50": 300,  "Incap": 50},
-    "BZ Agent":                      {"Mw": 337.4, "LCt50": 110000,"Incap": 20000},
+    "BZ Agent":                      {"Mw": 337.4, "LCt50":110000,"Incap":20000},
     "Agent 15":                      {"Mw": 340.0, "LCt50": 100000,"Incap": 18000},
     "EA-3167":                       {"Mw": 350.0, "LCt50": 150000,"Incap": 25000},
     "CS Gas":                        {"Mw": 188.5, "LCt50": 60000, "Incap": 5},
@@ -123,12 +119,11 @@ chemicals_db = {
     "Nipah Virus":                   {"Mw": 0,     "LCt50": 2,    "Incap": 0.2},
 }
 
-# Sigma Functions (Vectorized & Safe)
+# Sigma functions
 def get_sigma_y(stability, x):
     x = np.maximum(x, 1.0)
     params = {'A': 0.22, 'B': 0.16, 'C': 0.11, 'D': 0.08, 'E': 0.06, 'F': 0.04}
-    sy = params.get(stability, 0.08) * x ** 0.9
-    return np.minimum(sy, 1000)
+    return np.minimum(params.get(stability, 0.08) * x ** 0.9, 1000)
 
 def get_sigma_z(stability, x):
     x = np.maximum(x, 1.0)
@@ -143,8 +138,8 @@ def get_sigma_z(stability, x):
         sz = a * x ** b
     return np.minimum(sz, 1000)
 
-# Page Config
-st.set_page_config(page_title="CB-Shield Pro", layout="wide", page_icon="☣️")
+# Page setup
+st.set_page_config(page_title="CB-Shield Pro", layout="wide", page_icon="radioactive")
 
 st.markdown("""
 <style>
@@ -157,7 +152,7 @@ st.markdown('<p class="big-font">CB-SHIELD PRO</p>', unsafe_allow_html=True)
 st.markdown("<p class='header'>Chemical & Biological Dispersion Modeling System<br>Passive Defense - Iran</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Session State for Data
+# Initialize session state
 if 'data' not in st.session_state:
     st.session_state.data = {
         "chem": "Sarin (GB)", "stability": "", "wind_speed": 5.0, "Q": 1000.0,
@@ -178,38 +173,40 @@ with tab1:
     data["chem"] = chem
     col1, col2 = st.columns(2)
     with col1:
-        st.info(f"Agent: **{chem}**\nMolecular Weight: {agent['Mw']:.1f} g/mol")
+        st.info(f"**{chem}**\nMolecular Weight: {agent['Mw']:.1f} g/mol")
     with col2:
         st.error(f"LCt50: {agent['LCt50']} mg·min/m³")
-        st.warning(f"Incapacitating Dose: {agent['Incap']} mg·min/m³")
+        st.warning(f"Incapacitating: {agent['Incap']} mg·min/m³")
 
 with tab2:
-    st.header("Pasquill-Gifford Stability Class")
+    st.header("Calculate Pasquill-Gifford Stability Class")
     col1, col2 = st.columns(2)
     with col1:
-        daynight = st.radio("Time of Day", ["Day", "Night"], horizontal=True)
+        time_of_day = st.radio("Time", ["Day", "Night"], horizontal=True)
         wind_speed = st.slider("Wind Speed (m/s)", 0.5, 15.0, data["wind_speed"], 0.1)
         data["wind_speed"] = wind_speed
     with col2:
-        if daynight == "Day":
-            sun = st.radio("Solar Radiation", ["Strong", "Moderate", "Slight"], horizontal=True)
+        if time_of_day == "Day":
+            solar = st.radio("Solar Radiation", ["Strong", "Moderate", "Slight"])
         else:
-            cloud = st.radio("Cloud Cover", ["≤ 3/8", "> 4/8"], horizontal=True)
-    if st.button("Calculate Stability Class", type="primary"):
+            cloud = st.radio("Cloud Cover", ["≤ 3/8", "> 4/8"])
+    if st.button("Calculate Stability Class"):
         u = wind_speed
-        cat = "<2" if u<2 else "2-3" if u<3 else "3-5" if u<5 else "5-6" if u<6 else ">6"
-        if daynight == "Day":
-            table = {"<2": {"Strong":"A","Moderate":"A-B","Slight":"B"},
-                     "2-3": {"Strong":"A-B","Moderate":"B","Slight":"C"},
-                     "3-5": {"Strong":"B","Moderate":"C","Slight":"C"},
-                     "5-6": {"Strong":"C","Moderate":"C-D","Slight":"D"},
-                     ">6": {"Strong":"C","Moderate":"D","Slight":"D"}}
-            stab = table[cat][sun]
+        if u < 2: cat = "A"
+        elif u < 3: cat = "B"
+        elif u < 5: cat = "C"
+        elif u < 6: cat = "D"
+        else: cat = "E"
+        
+        if time_of_day == "Day":
+            if solar == "Strong": stab = {"A":"A", "B":"A-B", "C":"B", "D":"C", "E":"D"}[cat]
+            elif solar == "Moderate": stab = {"A":"A-B", "B":"B", "C":"C", "D":"C-D", "E":"D"}[cat]
+            else: stab = {"A":"B", "B":"C", "C":"C", "D":"D", "E":"D"}[cat]
         else:
             stab = "F" if cloud == "≤ 3/8" else "E"
-        final_stab = stab[0] if '-' in stab else stab
-        data["stability"] = final_stab
-        st.success(f"Stability Class: **{final_stab}**")
+        
+        data["stability"] = stab[0] if '-' in stab else stab
+        st.success(f"Stability Class: **{data['stability']}**")
         st.balloons()
 
 with tab3:
@@ -230,11 +227,11 @@ with tab3:
 
 with tab4:
     st.header("Dispersion Map")
-    if st.button("Plot Dispersion Map", type="primary", use_container_width=True):
+    if st.button("Generate Map", type="primary", use_container_width=True):
         if not data.get("stability"):
-            st.error("Please calculate stability class first!")
+            st.error("Calculate stability class first!")
         else:
-            with st.spinner("Calculating dispersion..."):
+            with st.spinner("Calculating..."):
                 x = np.linspace(50, 25000, 1000)
                 y = np.linspace(-12000, 12000, 800)
                 X, Y = np.meshgrid(x, y)
@@ -261,19 +258,18 @@ with tab4:
                                        contours=dict(start=agent['LCt50'], end=1e6)))
                 fig.add_trace(go.Contour(x=x, y=y, z=dose, colorscale='Oranges', opacity=0.8,
                                        contours=dict(start=agent['Incap'], end=agent['LCt50'])))
-                fig.add_trace(go.Contour(x=x, y=y, z=dose, colorscale='Greens', opacity=0.25,
+                fig.add_trace(go.Contour(x=x, y=y, z=dose, colorscale='Greens', opacity=0.3,
                                        contours=dict(start=0.1, end=agent['Incap'])))
-                fig.add_scatter(x=[0], y=[0], mode="markers", marker=dict(size=18, color="red", symbol="x"), name="Source")
-                fig.add_annotation(x=4000, y=1500, text="Wind Direction", font=dict(size=16, color="black"), showarrow=True, arrowhead=1, ax=0, ay=0)
-                fig.update_layout(title=f"{chem} | Class {stab} | Wind {u:.1f} m/s | Q = {data['Q']:.0f} kg",
-                               xaxis_title="Downwind Distance (m)", yaxis_title="Crosswind Distance (m)", xaxis_range=[0, 25000], yaxis_range=[-12000, 12000])
+                fig.add_scatter(x=[0], y=[0], mode="markers", marker=dict(size=18, color="red", symbol="x"))
+                fig.update_layout(title=f"{chem} | Class {stab} | Wind {u:.1f} m/s | Q={Q} kg",
+                               xaxis_title="Downwind (m)", yaxis_title="Crosswind (m)")
                 st.plotly_chart(fig, use_container_width=True)
 
 with tab5:
     st.header("Dose & Concentration Profile")
     if st.button("Plot Profile", type="primary"):
         if not data.get("stability"):
-            st.error("Stability class required")
+            st.error("Calculate stability class first")
         else:
             u = max(data["wind_speed"], 0.5)
             Q_mg = data["Q"] * 1e6
@@ -295,10 +291,10 @@ with tab5:
                 exp_y = np.exp(-0.5 * (y_rec / sy)**2)
                 exp_z = np.exp(-0.5 * ((z_rec - H) / sz)**2)
                 C = Q_mg / denominator * exp_x * exp_y * exp_z
-                fig2 = go.Figure(go.Scatter(x=t, y=C, mode='lines', line=dict(width=3, color='#c0392b')))
-                fig2.update_layout(title=f"Concentration vs Time at ({x_rec:.0f}, {y_rec:.0f}, {z_rec:.0f}) m",
-                                   xaxis_title="Time (minutes)", yaxis_title="Concentration (mg/m³)")
-                st.plotly_chart(fig2, use_container_width=True)
+                fig = go.Figure(go.Scatter(x=t, y=C, mode='lines', line=dict(width=3, color='#c0392b')))
+                fig.update_layout(title=f"Concentration vs Time at ({x_rec:.0f}, {y_rec:.0f}, {z_rec:.0f}) m",
+                               xaxis_title="Time (minutes)", yaxis_title="Concentration (mg/m³)")
+                st.plotly_chart(fig, use_container_width=True)
             else:
                 x = np.linspace(50, 20000, 1000)
                 dose = np.zeros_like(x)
@@ -312,21 +308,11 @@ with tab5:
                     exp_z = np.exp(-0.5 * ((z_rec - H) / sz)**2)
                     C = Q_rate / (2 * np.pi * u * sy * sz) * exp_y * exp_z
                     dose[i] = C * t_sec
-                fig2 = go.Figure(go.Scatter(x=x, y=dose, mode='lines', line=dict(width=3, color='#2980b9')))
-                fig2.add_hline(y=agent["LCt50"], line_dash="dash", line_color="red", annotation_text=f'LCt50 = {agent["LCt50"]}')
-                fig2.add_hline(y=agent["Incap"], line_dash="dot", line_color="orange", annotation_text=f'Incap = {agent["Incap"]}')
-                fig2.update_layout(title="Centerline Dose Profile - Continuous Release",
-                                   xaxis_title="Downwind Distance (m)", yaxis_title="Dose (mg·min/m³)")
-                st.plotly_chart(fig2, use_container_width=True)
-
-# Save and Export (in Streamlit style)
-if st.sidebar.button("Save Map as PNG"):
-    st.info("PNG export coming in next version")
-
-if st.sidebar.button("Export Data to Excel"):
-    st.info("Excel export coming in next version")
+                fig = go.Figure(go.Scatter(x=x, y=dose, mode='lines', line=dict(width=3, color='#2980b9')))
+                fig.add_hline(y=agent["LCt50"], line_dash="dash", line_color="red")
+                fig.add_hline(y=agent["Incap"], line_dash="dot", line_color="orange")
+                fig.update_layout(title="Centerline Dose Profile", xaxis_title="Distance (m)", yaxis_title="Dose (mg·min/m³)")
+                st.plotly_chart(fig, use_container_width=True)
 
 st.markdown("---")
 st.markdown("**CB-Shield Pro © 2025 — Made in Iran**")
-st.markdown("Passive Defense CBRN Tool")
-```
