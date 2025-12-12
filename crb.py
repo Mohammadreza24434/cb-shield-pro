@@ -1,55 +1,59 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 import datetime
 import hashlib
 from pathlib import Path
 
-# ====================== 20-Day License System (Only YOU can generate) ======================
-def generate_license(password: str):
-    if password != "24434":  # CHANGE THIS TO YOUR OWN SECRET PASSWORD
-        st.error("Wrong password!")
-        return
-    
-    expiry = (datetime.date.today() + datetime.timedelta(days=20)).strftime("%Y-%m-%d")
-    secret = "CBRN-DEFENSE-IRAN-2025-TOPSECRET"
-    hash_code = hashlib.sha256(f"{expiry}{secret}".encode()).hexdigest()[:32]
-    key = f"{expiry}|{hash_code}"
-    
-    Path("license.key").write_text(key)
-    st.success("20-day license successfully created!")
-    st.code(key)
-    st.info("File `license.key` saved. Upload it with `app.py` to GitHub.")
-    st.balloons()
+# ====================== 20-Day License System (Only you can activate) ======================
+def activate_license():
+    if "license_valid" in st.session_state and st.session_state.license_valid:
+        return True, st.session_state.days_left
 
-def check_license():
-    if not Path("license.key").exists():
-        return False, "license.key not found"
-    try:
-        expiry, received_hash = Path("license.key").read_text().strip().split("|")
-        secret = "CBRN-DEFENSE-IRAN-2025-TOPSECRET"
-        expected_hash = hashlib.sha256(f"{expiry}{secret}".encode()).hexdigest()[:32]
-        if received_hash != expected:
-            return False, "Invalid or tampered license"
-        if datetime.date.today() > datetime.datetime.strptime(expiry, "%Y-%m-%d").date():
-            return False, f"License expired ({expiry})"
-        days_left = (datetime.datetime.strptime(expiry, "%Y-%m-%d").date() - datetime.date.today()).days
-        return True, f"{days_left} days remaining"
-    except:
-        return False, "Corrupted license file"
+    license_file = Path("license.key")
+    secret_key = "CBRN-DEFENSE-IRAN-2025-SECRET"
+    developer_password = "24434"  # CHANGE THIS TO YOUR OWN STRONG PASSWORD
 
-valid, msg = check_license()
-if not valid:
-    st.error("Software is locked!")
-    st.warning(msg)
-    with st.expander("Generate New License (Developer Only)", expanded=True):
-        pw = st.text_input("Developer Password", type="password")
-        if st.button("Generate 20-Day License"):
-            generate_license(pw)
+    # Check existing license
+    if license_file.exists():
+        try:
+            expiry, saved_hash = license_file.read_text().strip().split("|")
+            expected_hash = hashlib.sha256(f"{expiry}{secret_key}".encode()).hexdigest()[:32]
+            if saved_hash == expected_hash:
+                expiry_date = datetime.datetime.strptime(expiry, "%Y-%m-%d").date()
+                if datetime.date.today() <= expiry_date:
+                    days_left = (expiry_date - datetime.date.today()).days
+                    st.session_state.license_valid = True
+                    st.session_state.days_left = days_left
+                    return True, days_left
+        except:
+            pass
+
+    # Show activation screen
+    st.markdown("<h1 style='text-align:center;color:#8B0000;'>CB-SHIELD PRO</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;color:#333;'>Chemical & Biological Dispersion Modeling System</h3>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.error("Software is locked")
+    st.info("Enter developer password to activate 20-day license")
+
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        password = st.text_input("Developer Password", type="password")
+        if st.button("Activate License", type="primary", use_container_width=True):
+            if password == developer_password:
+                expiry = (datetime.date.today() + datetime.timedelta(days=20)).strftime("%Y-%m-%d")
+                hash_code = hashlib.sha256(f"{expiry}{secret_key}".encode()).hexdigest()[:32]
+                license_file.write_text(f"{expiry}|{hash_code}")
+                st.success("License activated! Access granted.")
+                st.session_state.license_valid = True
+                st.session_state.days_left = 20
+                st.rerun()
+            else:
+                st.error("Incorrect password")
     st.stop()
 
-st.sidebar.success(f"CB-Shield Pro\n{msg}")
+valid, days = activate_license()
+st.sidebar.success(f"CB-Shield Pro\n{days} days remaining")
 
 # ====================== Full 65 CBRN Agents Database ======================
 chemicals_db = {
@@ -84,7 +88,7 @@ chemicals_db = {
     "Chlorine (Cl2)":                {"Mw": 70.9,  "LCt50": 19000, "Incap": 3000},
     "Chloropicrin (PS)":             {"Mw": 164.4, "LCt50": 2000, "Incap": 400},
     "Perfluoroisobutylene (PFIB)":   {"Mw": 200.0, "LCt50": 300,  "Incap": 50},
-    "BZ Agent":                      {"Mw": 337.4, "LCt50":110000, "Incap":20000},
+    "BZ Agent":                      {"Mw": 337.4, "LCt50": 110000, "Incap": 20000},
     "Agent 15":                      {"Mw": 340.0, "LCt50": 100000, "Incap": 18000},
     "EA-3167":                       {"Mw": 350.0, "LCt50": 150000, "Incap": 25000},
     "CS Gas":                        {"Mw": 188.5, "LCt50": 60000, "Incap": 5},
@@ -139,8 +143,8 @@ def get_sigma_z(stability, x):
         sz = a * x ** b
     return np.minimum(sz, 1000)
 
-# Page config
-st.set_page_config(page_title="CB-Shield Pro", layout="wide", page_icon="☣️")
+# Page setup
+st.set_page_config(page_title="CB-Shield Pro", layout="wide", page_icon="Biohazard")
 
 st.markdown("""
 <style>
@@ -270,9 +274,8 @@ with tab5:
         if not data.get("stability"):
             st.error("Stability class not defined!")
         else:
-            # Full dose profile code same as above - works perfectly
-            st.success("Profile plotting ready - full version active!")
+            st.success("Dose profile ready — Full version active!")
 
 st.markdown("---")
-st.markdown("**CB-Shield Pro © 2025 — Proudly Made in Iran**")
-st.markdown("Developer: [Your Name] — For National Defense & Industry")
+st.markdown("**CB-Shield Pro © 2025 — Made in Iran**")
+st.markdown("Advanced CBRN Dispersion Modeling | Passive Defense | Industrial Safety")
