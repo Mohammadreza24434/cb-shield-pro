@@ -5,62 +5,58 @@ import datetime
 import hashlib
 from pathlib import Path
 
-# ====================== 30-Day License System ======================
+# ====================== Fast & Secure 30-Day License ======================
 def license_system():
     license_file = Path("license.key")
-    DEV_PASSWORD = "24434"  # فقط تو این رمز رو می‌دونی — عوضش کن!
+    DEV_PASSWORD = "24434"  # فقط تو این رمز رو عوض کن!
 
-    # اگر لایسنس وجود داره و معتبره
     if license_file.exists():
         try:
-            expiry_str, saved_hash = license_file.read_text().strip().split("|")
+            expiry_str, code_hash = license_file.read_text().strip().split("|")
             expiry = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
-            expected_hash = hashlib.sha256(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()
-            
-            if saved_hash == expected_hash and datetime.date.today() <= expiry:
-                days_left = (expiry - datetime.date.today()).days
-                st.session_state.license_valid = True
-                st.session_state.days_left = days_left
+            expected = hashlib.md5(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()[:8]
+            if code_hash == expected and datetime.date.today() <= expiry:
+                st.session_state.logged_in = True
+                st.session_state.days_left = (expiry - datetime.date.today()).days
                 return True
         except:
             pass
 
-    # صفحه ورود
     st.markdown("<h1 style='text-align:center;color:#8B0000;font-size:60px;'>CB-SHIELD PRO</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;color:#2c3e50;'>Advanced CBRN Dispersion Modeling System</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;color:#2c3e50;'>Advanced CBRN Dispersion Modeling</h3>", unsafe_allow_html=True)
     st.markdown("---")
     st.error("License Required")
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        code = st.text_input("Enter License Code", type="password")
-        if st.button("Activate & Enter", type="primary", use_container_width=True):
+        code = st.text_input("Enter License Code", type="password", placeholder="2025-12-15|abc123")
+        if st.button("Activate", type="primary", use_container_width=True):
             if "|" in code and len(code.split("|")) == 2:
                 expiry_str, code_hash = code.split("|")
                 try:
                     expiry = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
-                    expected_hash = hashlib.sha256(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()
-                    if code_hash == expected_hash and datetime.date.today() <= expiry:
+                    expected = hashlib.md5(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()[:8]
+                    if code_hash == expected and datetime.date.today() <= expiry:
                         license_file.write_text(code)
-                        st.success(f"Access Granted! { (expiry - datetime.date.today()).days } days remaining")
-                        st.session_state.license_valid = True
+                        st.success(f"Access Granted! {st.session_state.days_left} days left")
+                        st.session_state.logged_in = True
                         st.rerun()
                     else:
                         st.error("Invalid or expired license")
                 except:
-                    st.error("Invalid format")
+                    st.error("Wrong format")
             else:
-                st.error("Invalid license code")
+                st.error("Use format: YYYY-MM-DD|xxxxxx")
 
         with st.expander("Developer: Generate 30-Day License"):
-            pwd = st.text_input("Developer Password", type="password")
-            if st.button("Generate License"):
+            pwd = st.text_input("Password", type="password")
+            if st.button("Generate"):
                 if pwd == DEV_PASSWORD:
                     expiry = (datetime.date.today() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")
-                    code_hash = hashlib.sha256(f"{expiry}{DEV_PASSWORD}".encode()).hexdigest()
-                    license_code = f"{expiry}|{code_hash}"
+                    short_hash = hashlib.md5(f"{expiry}{DEV_PASSWORD}".encode()).hexdigest()[:8]
+                    license_code = f"{expiry}|{short_hash}"
                     st.code(license_code)
-                    st.success("30-day license generated! Share only with authorized users.")
+                    st.success("30-day license ready!")
                 else:
                     st.error("Wrong password")
 
@@ -75,7 +71,7 @@ if st.sidebar.button("Logout", type="secondary"):
     st.session_state.clear()
     st.rerun()
 
-st.sidebar.success(f"License Active — {st.session_state.days_left} days left")
+st.sidebar.success(f"Active — {st.session_state.days_left} days")
 
 # ====================== 65 CBRN Agents ======================
 chemicals_db = {
@@ -146,164 +142,139 @@ chemicals_db = {
     "Nipah Virus":                   {"Mw": 0,     "LCt50": 2,    "Incap": 0.2},
 }
 
-# Fast Sigma Functions
+# Ultra-fast sigma (cached)
 @st.cache_data
 def get_sigma_y(stability, x):
     x = np.maximum(x, 1.0)
-    params = {'A': 0.22, 'B': 0.16, 'C': 0.11, 'D': 0.08, 'E': 0.06, 'F': 0.04}
-    return np.minimum(params.get(stability, 0.08) * x ** 0.9, 1000)
+    p = {'A':0.22,'B':0.16,'C':0.11,'D':0.08,'E':0.06,'F':0.04}
+    return np.minimum(p.get(stability,0.08)*x**0.9,1000)
 
 @st.cache_data
 def get_sigma_z(stability, x):
     x = np.maximum(x, 1.0)
     if stability == 'A':
-        return np.where(x < 100, 0.20 * x, np.where(x < 500, 0.24 * x ** 0.75, 0.15 * x ** 0.80))
-    params = {'B': 0.12, 'C': 0.08, 'D': 0.06, 'E': 0.03, 'F': 0.016}
-    exp = {'B': 1.0, 'C': 0.90, 'D': 0.85, 'E': 0.75, 'F': 0.70}
-    a = params.get(stability, 0.06)
-    b = exp.get(stability, 0.85)
-    return a * x ** b
+        return np.where(x<100,0.20*x,np.where(x<500,0.24*x**0.75,0.15*x**0.80))
+    p = {'B':0.12,'C':0.08,'D':0.06,'E':0.03,'F':0.016}
+    e = {'B':1.0,'C':0.90,'D':0.85,'E':0.75,'F':0.70}
+    return p.get(stability,0.06)*x**e.get(stability,0.85)
 
-# Page Setup
+# Page
 st.set_page_config(page_title="CB-Shield Pro", layout="wide", page_icon="☣️")
 st.markdown("<h1 style='text-align:center;color:#8B0000;'>CB-SHIELD PRO</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align:center;color:#2c3e50;'>Chemical & Biological Dispersion Modeling System</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align:center;color:#2c3e50;'>CBRN Dispersion Modeling System</h3>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Session State
 if 'data' not in st.session_state:
-    st.session_state.data = {
-        "chem": "Sarin (GB)", "stability": "", "wind_speed": 5.0, "Q": 1000.0,
-        "duration_min": 10.0, "H": 0.0, "release_type": "Instantaneous",
-        "x_rec": 1000.0, "y_rec": 0.0, "z_rec": 0.0
-    }
+    st.session_state.data = {"chem":"Sarin (GB)","stability":"","wind_speed":5.0,"Q":1000.0,"duration_min":10.0,"H":0.0,"release_type":"Instantaneous","x_rec":1000,"y_rec":0,"z_rec":0}
 data = st.session_state.data
 
-# Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "1. Agent", "2. Stability", "3. Release", "4. Map", "5. Profile"
-])
+tab1,tab2,tab3,tab4,tab5 = st.tabs(["Agent","Stability","Release","Map","Profile"])
 
 with tab1:
     st.header("Agent Selection")
-    chem = st.selectbox("Agent", options=list(chemicals_db.keys()))
+    chem = st.selectbox("Agent", list(chemicals_db.keys()))
     agent = chemicals_db[chem]
     data["chem"] = chem
-    st.info(f"**{chem}** | MW: {agent['Mw']:.1f} g/mol")
-    st.error(f"LCt50: {agent['LCt50']} mg·min/m³")
-    st.warning(f"Incapacitating: {agent['Incap']} mg·min/m³")
+    st.info(f"**{chem}** | MW: {agent['Mw']:.1f}")
+    st.error(f"LCt50: {agent['LCt50']}")
+    st.warning(f"Incap: {agent['Incap']}")
 
 with tab2:
-    st.header("Atmospheric Stability")
-    time = st.radio("Time", ["Day", "Night"], horizontal=True)
-    wind = st.slider("Wind Speed (m/s)", 0.5, 15.0, data["wind_speed"], 0.1)
+    st.header("Stability Class")
+    time = st.radio("Time", ["Day","Night"], horizontal=True)
+    wind = st.slider("Wind (m/s)",0.5,15.0,data["wind_speed"],0.1)
     data["wind_speed"] = wind
-    if time == "Day":
-        solar = st.radio("Solar Radiation", ["Strong", "Moderate", "Slight"])
-    else:
-        cloud = st.radio("Cloud Cover", ["≤ 3/8", "> 4/8"])
-    if st.button("Calculate Class"):
+    if time=="Day": solar = st.radio("Solar",["Strong","Moderate","Slight"])
+    else: cloud = st.radio("Cloud",["≤3/8",">4/8"])
+    if st.button("Calculate"):
         u = wind
-        if u < 2: cat = "A"
-        elif u < 3: cat = "B"
-        elif u < 5: cat = "C"
-        elif u < 6: cat = "D"
-        else: cat = "E"
-        if time == "Day":
-            table = {"A": {"Strong":"A","Moderate":"A-B","Slight":"B"},
-                     "B": {"Strong":"A-B","Moderate":"B","Slight":"C"},
-                     "C": {"Strong":"B","Moderate":"C","Slight":"C"},
-                     "D": {"Strong":"C","Moderate":"C-D","Slight":"D"},
-                     "E": {"Strong":"C","Moderate":"D","Slight":"D"}}
-            stab = table[cat][solar]
-        else:
-            stab = "F" if cloud == "≤ 3/8" else "E"
+        cat = "A" if u<2 else "B" if u<3 else "C" if u<5 else "D" if u<6 else "E"
+        stab = {"A":{"Strong":"A","Moderate":"A-B","Slight":"B"},
+                "B":{"Strong":"A-B","Moderate":"B","Slight":"C"},
+                "C":{"Strong":"B","Moderate":"C","Slight":"C"},
+                "D":{"Strong":"C","Moderate":"C-D","Slight":"D"},
+                "E":{"Strong":"C","Moderate":"D","Slight":"D"}}[cat][solar] if time=="Day" else ("F" if cloud=="≤3/8" else "E")
         data["stability"] = stab[0] if '-' in stab else stab
         st.success(f"Class: **{data['stability']}**")
 
 with tab3:
     st.header("Release Parameters")
-    rtype = st.radio("Type", ["Instantaneous", "Continuous"])
+    rtype = st.radio("Type",["Instantaneous","Continuous"])
     data["release_type"] = rtype
-    Q = st.number_input("Amount (kg)", 1, 10000, int(data["Q"]))
+    Q = st.number_input("Amount (kg)",1,10000,int(data["Q"]))
     data["Q"] = Q
-    if rtype == "Continuous":
-        dur = st.number_input("Duration (min)", 0.1, 300.0, data["duration_min"])
+    if rtype=="Continuous":
+        dur = st.number_input("Duration (min)",0.1,300.0,data["duration_min"])
         data["duration_min"] = dur
-    H = st.number_input("Height (m)", 0.0, 200.0, data["H"])
+    H = st.number_input("Height (m)",0.0,200.0,data["H"])
     data["H"] = H
-    c1, c2, c3 = st.columns(3)
-    data["x_rec"] = c1.number_input("X (m)", value=data["x_rec"])
-    data["y_rec"] = c2.number_input("Y (m)", value=data["y_rec"])
-    data["z_rec"] = c3.number_input("Z (m)", value=data["z_rec"])
+    c1,c2,c3 = st.columns(3)
+    data["x_rec"] = c1.number_input("X",value=data["x_rec"])
+    data["y_rec"] = c2.number_input("Y",value=data["y_rec"])
+    data["z_rec"] = c3.number_input("Z",value=data["z_rec"])
 
 with tab4:
     st.header("Dispersion Map")
-    if st.button("Generate Map", type="primary"):
+    if st.button("Plot", type="primary"):
         if not data.get("stability"):
             st.error("Calculate stability first")
         else:
-            with st.spinner("Calculating..."):
-                x = np.linspace(100, 25000, 400)
-                y = np.linspace(-10000, 10000, 400)
-                X, Y = np.meshgrid(x, y)
+            with st.spinner("Fast calculation..."):
+                x = np.linspace(100,25000,350)
+                y = np.linspace(-10000,10000,350)
+                X,Y = np.meshgrid(x,y)
                 dose = np.zeros_like(X)
-                u = max(data["wind_speed"], 0.5)
-                Q_mg = data["Q"] * 1e6
+                u = max(data["wind_speed"],0.5)
+                Q_mg = data["Q"]*1e6
                 H = data["H"]
                 stab = data["stability"]
-                sy = get_sigma_y(stab, x)
-                sz = get_sigma_z(stab, x)
+                sy = get_sigma_y(stab,x)
+                sz = get_sigma_z(stab,x)
                 for i in range(len(x)):
-                    if sy[i] < 0.1 or sz[i] < 0.1: continue
-                    exp_y = np.exp(-0.5 * (Y[:,i]/sy[i])**2)
-                    exp_z = np.exp(-0.5 * (H/sz[i])**2)
-                    if data["release_type"] == "Instantaneous":
-                        dose[:,i] = (Q_mg * np.sqrt(2/np.pi)) / (u * sy[i] * sz[i]) * exp_y * exp_z
+                    if sy[i]<0.1 or sz[i]<0.1: continue
+                    ey = np.exp(-0.5*(Y[:,i]/sy[i])**2)
+                    ez = np.exp(-0.5*(H/sz[i])**2)
+                    if data["release_type"]=="Instantaneous":
+                        dose[:,i] = (Q_mg*np.sqrt(2/np.pi))/(u*sy[i]*sz[i])*ey*ez
                     else:
-                        t_sec = max(data["duration_min"] * 60, 1)
-                        C = (Q_mg / t_sec) / (2 * np.pi * u * sy[i] * sz[i]) * exp_y * exp_z
-                        dose[:,i] = C * t_sec
+                        t = max(data["duration_min"]*60,1)
+                        C = (Q_mg/t)/(2*np.pi*u*sy[i]*sz[i])*ey*ez
+                        dose[:,i] = C*t
                 fig = go.Figure()
-                fig.add_trace(go.Contour(x=x/1000, y=y/1000, z=dose, colorscale='Reds', showscale=False,
-                                       contours=dict(start=agent['LCt50'], end=1e6)))
-                fig.add_trace(go.Contour(x=x/1000, y=y/1000, z=dose, colorscale='Oranges', opacity=0.7,
-                                       contours=dict(start=agent['Incap'], end=agent['LCt50'])))
-                fig.add_trace(go.Contour(x=x/1000, y=y/1000, z=dose, colorscale='Greens', opacity=0.3,
-                                       contours=dict(start=0.1, end=agent['Incap'])))
-                fig.add_scatter(x=[0], y=[0], mode="markers", marker=dict(size=16, color="black", symbol="x"))
-                fig.update_layout(title=f"{chem} | Class {stab} | Wind {u:.1f} m/s")
-                st.plotly_chart(fig, use_container_width=True)
+                fig.add_trace(go.Contour(x=x/1000,y=y/1000,z=dose,colorscale='Reds',showscale=False,
+                                       contours=dict(start=agent['LCt50'],end=1e6,size=500)))
+                fig.add_trace(go.Contour(x=x/1000,y=y/1000,z=dose,colorscale='Oranges',opacity=0.7,
+                                       contours=dict(start=agent['Incap'],end=agent['LCt50'])))
+                fig.add_trace(go.Contour(x=x/1000,y=y/1000,z=dose,colorscale='Greens',opacity=0.3,
+                                       contours=dict(start=0.1,end=agent['Incap'])))
+                fig.add_scatter(x=[0],y=[0],mode="markers",marker=dict(size=16,color="black",symbol="x"))
+                fig.update_layout(title=f"{chem} | Class {stab} | Wind {u:.1f} m/s",xaxis_title="km",yaxis_title="km")
+                st.plotly_chart(fig,use_container_width=True)
 
 with tab5:
     st.header("Dose Profile")
-    if st.button("Plot Profile"):
+    if st.button("Plot"):
         if not data.get("stability"):
             st.error("Stability required")
         else:
-            x = np.linspace(50, 20000, 600)
+            x = np.linspace(50,20000,500)
             dose = np.zeros_like(x)
-            u = max(data["wind_speed"], 0.5)
-            Q_mg = data["Q"] * 1e6
+            u = max(data["wind_speed"],0.5)
+            Q_mg = data["Q"]*1e6
             H = data["H"]
             stab = data["stability"]
-            y_rec = data["y_rec"]
-            z_rec = data["z_rec"]
-            t_sec = max(data["duration_min"] * 60, 1) if data["release_type"] == "Continuous" else 1
-            Q_rate = Q_mg / t_sec
-            for i, xi in enumerate(x):
-                sy = get_sigma_y(stab, xi)
-                sz = get_sigma_z(stab, xi)
-                if sy < 0.1 or sz < 0.1: continue
-                exp_y = np.exp(-0.5 * (y_rec / sy)**2)
-                exp_z = np.exp(-0.5 * ((z_rec - H) / sz)**2)
-                C = Q_rate / (2 * np.pi * u * sy * sz) * exp_y * exp_z
-                dose[i] = C * t_sec
-            fig = go.Figure(go.Scatter(x=x, y=dose, mode='lines', line=dict(width=3, color='#2980b9')))
-            fig.add_hline(y=agent["LCt50"], line_dash="dash", line_color="red")
-            fig.add_hline(y=agent["Incap"], line_dash="dot", line_color="orange")
-            fig.update_layout(title="Centerline Dose Profile", xaxis_title="Distance (m)", yaxis_title="Dose (mg·min/m³)")
-            st.plotly_chart(fig, use_container_width=True)
+            y,z = data["y_rec"],data["z_rec"]
+            t = max(data["duration_min"]*60,1) if data["release_type"]=="Continuous" else 1
+            Q_rate = Q_mg/t
+            for i,xi in enumerate(x):
+                sy = get_sigma_y(stab,xi)
+                sz = get_sigma_z(stab,xi)
+                if sy<0.1 or sz<0.1: continue
+                dose[i] = Q_rate/(2*np.pi*u*sy*sz)*np.exp(-0.5*(y/sy)**2)*np.exp(-0.5*((z-H)/sz)**2)*t
+            fig = go.Figure(go.Scatter(x=x,y=dose,mode='lines',line=dict(width=3,color='#2980b9')))
+            fig.add_hline(y=agent["LCt50"],line_dash="dash",line_color="red")
+            fig.add_hline(y=agent["Incap"],line_dash="dot",line_color="orange")
+            fig.update_layout(title="Centerline Dose",xaxis_title="Distance (m)",yaxis_title="Dose (mg·min/m³)")
+            st.plotly_chart(fig,use_container_width=True)
 
-st.markdown("---")
 st.markdown("**CB-Shield Pro © 2025 — Made in Iran**")
