@@ -8,8 +8,9 @@ from pathlib import Path
 # ====================== 30-Day License System (Short & Secure) ======================
 def license_system():
     license_file = Path("license.key")
-    DEV_PASSWORD = "24434"  # رمز تو — فقط تو می‌دونی!
+    DEV_PASSWORD = "24434"  # فقط تو این رمز رو عوض کن!
 
+    # Check if license is valid
     if license_file.exists():
         try:
             expiry_str, saved_hash = license_file.read_text().strip().split("|")
@@ -19,46 +20,47 @@ def license_system():
                 st.session_state.logged_in = True
                 st.session_state.days_left = (expiry - datetime.date.today()).days
                 return True
-        except:
+        except Exception as e:
             pass
 
-    st.markdown("<h1 style='text-align:center;color:#8B0000;font-size:60px;'>CB-SHIELD PRO</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;color:#2c3e50;'>Advanced CBRN Dispersion Modeling</h3>", unsafe_allow_html=True)
+    # Login Page
+    st.markdown("<h1 style='text-align:center;color:#8B0000;font-size:60px;font-weight:bold;'>CB-SHIELD PRO</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;color:#2c3e50;margin-bottom:40px;'>Advanced CBRN Dispersion Modeling System</h3>", unsafe_allow_html=True)
     st.markdown("---")
-    st.error("License Required")
+    st.error("Access Denied — License Required")
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        code = st.text_input("Enter License Code", type="password", placeholder="2025-12-15|abc123")
-        if st.caption("Format: YYYY-MM-DD|xxxxxx")
-
+        st.caption("Format: YYYY-MM-DD|xxxxxx")
+        code = st.text_input("Enter License Code", type="password")
+        
         if st.button("Activate", type="primary", use_container_width=True):
-            if "|" in code and len(code.split("|")) == 2:
-                expiry_str, code_hash = code.split("|")
+            if "|" in code:
                 try:
+                    expiry_str, code_hash = code.split("|")
                     expiry = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
                     expected = hashlib.md5(f"{expiry_str}{DEV_PASSWORD}".encode()).hexdigest()[:8]
                     if code_hash == expected and datetime.date.today() <= expiry:
                         license_file.write_text(code)
-                        st.success(f"Activated! { (expiry - datetime.date.today()).days } days left")
+                        st.success("Access Granted!")
                         st.session_state.logged_in = True
                         st.rerun()
                     else:
                         st.error("Invalid or expired license")
                 except:
-                    st.error("Wrong format")
+                    st.error("Invalid format")
             else:
-                st.error("Use: YYYY-MM-DD|xxxxxx")
+                st.error("Use format: YYYY-MM-DD|xxxxxx")
 
-        with st.expander("Developer: Generate License"):
+        with st.expander("Developer: Generate 30-Day License"):
             pwd = st.text_input("Password", type="password")
-            if st.button("Generate 30-Day License"):
+            if st.button("Generate License"):
                 if pwd == DEV_PASSWORD:
                     expiry = (datetime.date.today() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")
                     short_hash = hashlib.md5(f"{expiry}{DEV_PASSWORD}".encode()).hexdigest()[:8]
                     license_code = f"{expiry}|{short_hash}"
                     st.code(license_code)
-                    st.success("License ready!")
+                    st.success("License generated!")
                 else:
                     st.error("Wrong password")
 
@@ -66,16 +68,16 @@ def license_system():
 
 license_system()
 
-# Logout
+# Logout Button
 if st.sidebar.button("Logout", type="secondary"):
     if Path("license.key").exists():
         Path("license.key").unlink()
     st.session_state.clear()
     st.rerun()
 
-st.sidebar.success(f"Active — {st.session_state.days_left} days left")
+st.sidebar.success(f"Active — {st.session_state.days_left} days remaining")
 
-# ====================== 65 CBRN Agents ======================
+# ====================== 65 CBRN Agents Database ======================
 chemicals_db = {
     "Sarin (GB)":                    {"Mw": 140.1, "LCt50": 75,    "Incap": 25},
     "Tabun (GA)":                    {"Mw": 162.3, "LCt50": 400,   "Incap": 150},
@@ -101,21 +103,21 @@ chemicals_db = {
     "Methyldichloroarsine (MD)":     {"Mw": 160.9, "LCt50": 3000,  "Incap": 500},
     "Phosgene Oxime (CX)":           {"Mw": 113.5, "LCt50": 3200,  "Incap": 1600},
     "Hydrogen Cyanide (AC)":         {"Mw": 27.0,  "LCt50": 2500, "Incap": 1000},
-    "Cyanogen Chloride (CK)":        {"Mw": 61.5,  "LCt50": 11000, "Incap": 2500},
+    "Cyanogen Chloride (CK)":        {"Mw": 61.5,  "LCt50": 11000,"Incap": 2500},
     "Arsine (SA)":                   {"Mw": 77.9,  "LCt50": 5000, "Incap": 500},
     "Phosgene (CG)":                 {"Mw": 98.9,  "LCt50": 3200, "Incap": 1600},
     "Diphosgene (DP)":               {"Mw": 197.8, "LCt50": 3200, "Incap": 800},
-    "Chlorine (Cl2)":                {"Mw": 70.9,  "LCt50": 19000, "Incap": 3000},
+    "Chlorine (Cl2)":                {"Mw": 70.9,  "LCt50": 19000,"Incap": 3000},
     "Chloropicrin (PS)":             {"Mw": 164.4, "LCt50": 2000, "Incap": 400},
     "Perfluoroisobutylene (PFIB)":   {"Mw": 200.0, "LCt50": 300,  "Incap": 50},
-    "BZ Agent":                      {"Mw": 337.4, "LCt50": 110000, "Incap": 20000},
-    "Agent 15":                      {"Mw": 340.0, "LCt50": 100000, "Incap": 18000},
-    "EA-3167":                       {"Mw": 350.0, "LCt50": 150000, "Incap": 25000},
+    "BZ Agent":                      {"Mw": 337.4, "LCt50": 110000,"Incap": 20000},
+    "Agent 15":                      {"Mw": 340.0, "LCt50": 100000,"Incap": 18000},
+    "EA-3167":                       {"Mw": 350.0, "LCt50": 150000,"Incap": 25000},
     "CS Gas":                        {"Mw": 188.5, "LCt50": 60000, "Incap": 5},
     "CR Gas":                        {"Mw": 195.0, "LCt50": 60000, "Incap": 3},
     "CN Gas":                        {"Mw": 154.6, "LCt50": 8500,  "Incap": 20},
-    "OC (Pepper Spray)":             {"Mw": 305.4, "LCt50": 100000, "Incap": 1},
-    "PAVA":                          {"Mw": 293.4, "LCt50": 120000, "Incap": 2},
+    "OC (Pepper Spray)":             {"Mw": 305.4, "LCt50": 100000,"Incap": 1},
+    "PAVA":                          {"Mw": 293.4, "LCt50": 120000,"Incap": 2},
     "Adamsite (DM)":                 {"Mw": 277.6, "LCt50": 11000, "Incap": 150},
     "Ammonia":                       {"Mw": 17.0,  "LCt50": 5000, "Incap": 1500},
     "Methyl Isocyanate":             {"Mw": 57.1,  "LCt50": 300,  "Incap": 50},
@@ -128,7 +130,7 @@ chemicals_db = {
     "Staph Enterotoxin B (SEB)":     {"Mw": 28354, "LCt50": 0.02, "Incap": 0.0003},
     "T-2 Mycotoxin":                 {"Mw": 466.0, "LCt50": 200,  "Incap": 50},
     "Saxitoxin":                     {"Mw": 299.3, "LCt50": 0.01, "Incap": 0.002},
-    "Tetrodotoxin":                  {"Mw": 319.3, "LCt50": 0.008,"Incap": 0.001},
+    "Tetrodotoxin":                  {"Mw": 319.3, "LCt50": 0.008, "Incap": 0.001},
     "Anthrax Spores":                {"Mw": 0,     "LCt50": 8000, "Incap": 2000},
     "Plague (Y. pestis)":            {"Mw": 0,     "LCt50": 100,  "Incap": 10},
     "Tularemia":                     {"Mw": 0,     "LCt50": 10,   "Incap": 1},
@@ -144,7 +146,7 @@ chemicals_db = {
     "Nipah Virus":                   {"Mw": 0,     "LCt50": 2,    "Incap": 0.2},
 }
 
-# Fast & Accurate Sigma Functions
+# Fast & Accurate Sigma
 @st.cache_data
 def get_sigma_y(stability, x):
     x = np.maximum(x, 1.0)
@@ -167,31 +169,39 @@ st.markdown("<h3 style='text-align:center;color:#2c3e50;'>CBRN Dispersion Modeli
 st.markdown("---")
 
 if 'data' not in st.session_state:
-    st.session_state.data = {"chem":"Sarin (GB)","stability":"","wind_speed":5.0,"Q":1000.0,"duration_min":10.0,"H":0.0,"release_type":"Instantaneous","x_rec":1000,"y_rec":0,"z_rec":0}
+    st.session_state.data = {
+        "chem": "Sarin (GB)", "stability": "", "wind_speed": 5.0, "Q": 1000.0,
+        "duration_min": 10.0, "H": 0.0, "release_type": "Instantaneous",
+        "x_rec": 1000.0, "y_rec": 0.0, "z_rec": 0.0
+    }
 data = st.session_state.data
 
-tab1,tab2,tab3,tab4,tab5 = st.tabs(["Agent","Stability","Release","Map","Profile"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "1. Agent", "2. Stability", "3. Release", "4. Map", "5. Profile"
+])
 
 with tab1:
     st.header("Agent Selection")
-    chem = st.selectbox("Agent", list(chemicals_db.keys()))
+    chem = st.selectbox("Select Agent", list(chemicals_db.keys()))
     agent = chemicals_db[chem]
     data["chem"] = chem
-    st.info(f"**{chem}** | MW: {agent['Mw']:.1f} g/mol")
-    st.error(f"LCt50: {agent['LCt50']} mg·min/m³")
-    st.warning(f"Incapacitating: {agent['Incap']} mg·min/m³")
+    st.info(f"**Agent:** {chem} | **MW:** {agent['Mw']:.1f} g/mol")
+    st.error(f"**LCt50:** {agent['LCt50']} mg·min/m³")
+    st.warning(f"**Incapacitating Dose:** {agent['Incap']} mg·min/m³")
 
 with tab2:
     st.header("Atmospheric Stability")
-    time = st.radio("Time", ["Day","Night"], horizontal=True)
-    wind = st.slider("Wind Speed (m/s)",0.5,15.0,data["wind_speed"],0.1)
+    time = st.radio("Time", ["Day", "Night"], horizontal=True)
+    wind = st.slider("Wind Speed (m/s)", 0.5, 15.0, data["wind_speed"], 0.1)
     data["wind_speed"] = wind
-    if time=="Day": solar = st.radio("Solar Radiation",["Strong","Moderate","Slight"])
-    else: cloud = st.radio("Cloud Cover",["≤3/8",">4/8"])
-    if st.button("Calculate"):
+    if time == "Day":
+        solar = st.radio("Solar Radiation", ["Strong", "Moderate", "Slight"])
+    else:
+        cloud = st.radio("Cloud Cover", ["≤ 3/8", "> 4/8"])
+    if st.button("Calculate Stability Class"):
         u = wind
         cat = "A" if u<2 else "B" if u<3 else "C" if u<5 else "D" if u<6 else "E"
-        if time=="Day":
+        if time == "Day":
             table = {"A":{"Strong":"A","Moderate":"A-B","Slight":"B"},
                      "B":{"Strong":"A-B","Moderate":"B","Slight":"C"},
                      "C":{"Strong":"B","Moderate":"C","Slight":"C"},
@@ -199,25 +209,25 @@ with tab2:
                      "E":{"Strong":"C","Moderate":"D","Slight":"D"}}
             stab = table[cat][solar]
         else:
-            stab = "F" if cloud=="≤3/8" else "E"
+            stab = "F" if cloud == "≤ 3/8" else "E"
         data["stability"] = stab[0] if '-' in stab else stab
-        st.success(f"Class: **{data['stability']}**")
+        st.success(f"Stability Class: **{data['stability']}**")
 
 with tab3:
     st.header("Release Parameters")
-    rtype = st.radio("Type",["Instantaneous","Continuous"])
+    rtype = st.radio("Release Type", ["Instantaneous", "Continuous"])
     data["release_type"] = rtype
-    Q = st.number_input("Amount (kg)",1,10000,int(data["Q"]))
+    Q = st.number_input("Amount (kg)", 1, 10000, int(data["Q"]))
     data["Q"] = Q
-    if rtype=="Continuous":
-        dur = st.number_input("Duration (min)",0.1,300.0,data["duration_min"])
+    if rtype == "Continuous":
+        dur = st.number_input("Duration (min)", 0.1, 300.0, data["duration_min"])
         data["duration_min"] = dur
-    H = st.number_input("Height (m)",0.0,200.0,data["H"])
+    H = st.number_input("Height (m)", 0.0, 200.0, data["H"])
     data["H"] = H
     c1,c2,c3 = st.columns(3)
-    data["x_rec"] = c1.number_input("X (m)",value=data["x_rec"])
-    data["y_rec"] = c2.number_input("Y (m)",value=data["y_rec"])
-    data["z_rec"] = c3.number_input("Z (m)",value=data["z_rec"])
+    data["x_rec"] = c1.number_input("X (m)", value=data["x_rec"])
+    data["y_rec"] = c2.number_input("Y (m)", value=data["y_rec"])
+    data["z_rec"] = c3.number_input("Z (m)", value=data["z_rec"])
 
 with tab4:
     st.header("Dispersion Map")
